@@ -1,7 +1,7 @@
 {
   "name": "preload",
   "description": "Load images, scripts and CSS with XHR progress events where supported",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "main": "index.js",
   "browser": "index.js",
   "dependencies": {
