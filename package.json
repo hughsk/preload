@@ -4,7 +4,12 @@
   "version": "0.0.0",
   "main": "index.js",
   "browser": "index.js",
-  "dependencies": {},
+  "dependencies": {
+    "once": "~1.2.0",
+    "inherits": "~2.0.1",
+    "insert-css": "0.0.0",
+    "xhr": "~1.2.3"
+  },
   "devDependencies": {},
   "scripts": {},
   "author": "Hugh Kennedy <hughskennedy@gmail.com> (http://github.com/hughsk)",
