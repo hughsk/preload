@@ -4,6 +4,9 @@ var inherits = require('inherits')
 var once = require('once')
 var xhr = require('xhr')
 
+var urlSupport = ('URL' in window && URL.createObjectURL)
+var blobSupport = ('Blob' in window)
+
 module.exports = Preload
 
 inherits(Preload, EventEmitter)
@@ -11,6 +14,7 @@ function Preload() {
   if (!(this instanceof Preload)) return new Preload
   EventEmitter.call(this)
   this.targets = {}
+  this.done = false
   this.targetCount = 0
 }
 
@@ -21,11 +25,23 @@ proto.js = function js(src, callback) {
   if (Array.isArray(src)) return many(this, 'js', src, callback)
 
   var self = this
-  watch(this, src, xhr(src, function(err, res, body) {
+  watch(this, src, xhr({
+      uri: src
+    , timeout: 60000 * 10 // 10 minutes
+  }, function(err, res, body) {
     if (err) return callback(err)
     var script = document.createElement('script')
     self.progress(src, self.targets[src] = 1)
-    script.setAttribute('src', 'data:text/javascript;charset=UTF-8,' + encodeURIComponent(body))
+
+    if (!blobSupport || !urlSupport) {
+      // using encodeURIComponent instead of base64 to support all of utf-8
+      // perhaps a better workaround?
+      script.setAttribute('src', 'data:text/javascript;charset=UTF-8,' + encodeURIComponent(body))
+    } else {
+      var blob = new Blob([body], { type: 'text/javascript' })
+      script.setAttribute('src', URL.createObjectURL(blob))
+    }
+
     document.body.appendChild(script)
     callback()
   }))
@@ -38,7 +54,10 @@ proto.css = function css(src, callback) {
   if (Array.isArray(src)) return many(this, 'css', src, callback)
 
   var self = this
-  watch(this, src, xhr(src, function(err, res, body) {
+  watch(this, src, xhr({
+      uri: src
+    , timeout: 60000 * 10 // 10 minutes
+  }, function(err, res, body) {
     if (err) return callback(err)
     self.progress(src, self.targets[src] = 1)
     insertCss(body)
@@ -52,7 +71,7 @@ proto.img = function img(src, callback) {
   if (Array.isArray(src)) return many(this, 'img', src, callback)
 
   var self = this
-  if (!('Blob' in window)) {
+  if (!blobSupport) {
     var img = document.createElement('img')
     self.targets[src] = 0
     self.targetCount++
@@ -62,7 +81,10 @@ proto.img = function img(src, callback) {
     }
     img.src = src
   } else {
-    var req = watch(this, src, xhr(src, function(err, res, body) {
+    var req = watch(this, src, xhr({
+        uri: src
+      , timeout: 60000 * 10 // 10 minutes
+    }, function(err, res, body) {
       if (err) return callback(err)
       self.progress(src, self.targets[src] = 1)
     }))
@@ -82,6 +104,10 @@ proto.progress = function progress(src, progress) {
   }
 
   this.emit('progress', src, progress, total)
+  if (total >= 1 && !this.done) {
+    this.done = true
+    this.emit('done')
+  }
 
   return this
 }
